@@ -30,6 +30,9 @@ export default [
       'no-var': 'error',
       'object-shorthand': 'error',
       'prefer-arrow-callback': 'error',
+      // Import-related rules
+      'no-undef': 'error',
+      'import/no-unresolved': 'off', // Disabled since we use custom import maps
     },
   },
   {

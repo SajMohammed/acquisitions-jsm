@@ -1,8 +1,8 @@
 import logger from "#config/logger.js";
-import { createUser } from "#services/auth.service.js";
+import { createUser, authenticateUser } from "#services/auth.service.js";
 import { formatValidationError } from "#utils/format.js";
 import { jwttoken } from "#utils/jwt.js";
-import { signupSchema } from "#validations/auth.validation.js";
+import { signupSchema, signInSchema } from "#validations/auth.validation.js";
 import { cookies } from "#utils/cookies.js";
 
 export const signup = async (req, res, next) => {
@@ -32,8 +32,8 @@ export const signup = async (req, res, next) => {
             user: {
                 id: user.id,
                 name: user.name,
-                user: user.email,
-                user: user.role
+                email: user.email,
+                role: user.role
             }
         })
     } catch (e) {
@@ -43,6 +43,62 @@ export const signup = async (req, res, next) => {
             return res.status(409).json({ error: 'Email already exist'})
         }
         
+        next(e);
+    }
+}
+
+export const signin = async (req, res, next) => {
+    try {
+        const validationResult = signInSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: formatValidationError(validationResult.error)
+            });
+        }
+
+        const { email, password } = validationResult.data;
+
+        // AUTH SERVICE
+        const user = await authenticateUser(email, password);
+        const token = jwttoken.sign({
+            id: user.id,
+            email: user.email,
+            role: user.role
+        });
+        cookies.set(res, 'token', token);
+
+        logger.info(`User signed in successfully: ${email}`);
+        res.status(200).json({
+            message: 'User signed in successfully',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (e) {
+        logger.error('Signin error', e);
+
+        if (e.message === 'User not found' || e.message === 'Invalid password') {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        next(e);
+    }
+}
+
+export const signout = async (req, res, next) => {
+    try {
+        cookies.clear(res, 'token');
+
+        logger.info('User signed out successfully');
+        res.status(200).json({
+            message: 'User signed out successfully'
+        });
+    } catch (e) {
+        logger.error('Signout error', e);
         next(e);
     }
 }

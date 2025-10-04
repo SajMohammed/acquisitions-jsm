@@ -112,3 +112,10 @@
 {"level":"info","message":"User sajmo3@gmail.com created successfully","service":"acquisitions-api"}
 {"level":"info","message":"User registered successfully: sajmo3@gmail.com","service":"acquisitions-api"}
 {"level":"info","message":"::1 - - [01/Oct/2025:20:40:26 +0000] \"POST /api/auth/sign-up HTTP/1.1\" 201 75 \"-\" \"HTTPie\"","service":"acquisitions-api"}
+{"level":"info","message":"User sajmo@gmail.com created successfully","service":"acquisitions-api"}
+{"level":"info","message":"User registered successfully: sajmo@gmail.com","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [04/Oct/2025:11:53:47 +0000] \"POST /api/auth/sign-up HTTP/1.1\" 201 74 \"-\" \"HTTPie\"","service":"acquisitions-api"}
+{"level":"info","message":"User signed in successfully: sajmo@gmail.com","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [04/Oct/2025:12:39:37 +0000] \"POST /api/auth/sign-in HTTP/1.1\" 200 113 \"-\" \"HTTPie\"","service":"acquisitions-api"}
+{"level":"info","message":"User signed out successfully","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [04/Oct/2025:12:40:24 +0000] \"POST /api/auth/sign-out HTTP/1.1\" 200 42 \"-\" \"HTTPie\"","service":"acquisitions-api"}
