@@ -173,3 +173,7 @@
 {"level":"info","message":"::1 - - [04/Oct/2025:18:56:50 +0000] \"GET /health HTTP/1.1\" 200 68 \"-\" \"-\"","service":"acquisitions-api"}
 {"level":"info","message":"::1 - - [04/Oct/2025:18:57:21 +0000] \"GET /health HTTP/1.1\" 200 68 \"-\" \"-\"","service":"acquisitions-api"}
 {"level":"info","message":"::1 - - [04/Oct/2025:19:00:21 +0000] \"GET /health HTTP/1.1\" 200 68 \"-\" \"-\"","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [05/Oct/2025:11:52:23 +0000] \"GET /health HTTP/1.1\" 200 66 \"-\" \"-\"","service":"acquisitions-api"}
+{"level":"info","message":"Hello from acquisitions!","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [05/Oct/2025:11:52:23 +0000] \"GET / HTTP/1.1\" 200 27 \"-\" \"-\"","service":"acquisitions-api"}
+{"level":"info","message":"::1 - - [05/Oct/2025:11:52:23 +0000] \"GET /api HTTP/1.1\" 200 41 \"-\" \"-\"","service":"acquisitions-api"}

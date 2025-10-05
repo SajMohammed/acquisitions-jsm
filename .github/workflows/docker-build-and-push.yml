@@ -1,0 +1,216 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag_suffix:
+        description: 'Additional tag suffix (optional)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: acquisitions-jsm
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Latest tag for main branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Branch name
+            type=ref,event=branch
+            # Commit SHA (short)
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD-HHmmss'}},format=short
+            # Production timestamp format
+            type=raw,value=prod-{{date 'YYYYMMDD-HHmmss'}},enable={{is_default_branch}}
+            # Custom suffix if provided via workflow_dispatch
+            type=raw,value=prod-{{date 'YYYYMMDD-HHmmss'}}${{ github.event.inputs.tag_suffix && format('-{0}', github.event.inputs.tag_suffix) || '' }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.description=Acquisitions JSM API - Node.js Express application with Neon Database
+            org.opencontainers.image.vendor=SajMohammed
+            org.opencontainers.image.version={{version}}
+            org.opencontainers.image.created={{date 'iso8601'}}
+            org.opencontainers.image.revision={{sha}}
+            org.opencontainers.image.url=https://github.com/SajMohammed/acquisitions-jsm
+            org.opencontainers.image.source=https://github.com/SajMohammed/acquisitions-jsm
+            org.opencontainers.image.licenses=ISC
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          echo "# Docker Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            echo "✅ **Docker image built and pushed successfully!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Docker image build failed**" >> $GITHUB_STEP_SUMMARY
+            echo "Check the build logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Image Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: \`${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platforms**: \`linux/amd64\`, \`linux/arm64\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git SHA**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Published Tags" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Pull Commands" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract the first tag (usually the most relevant one)
+          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "# Pull the latest image" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull $FIRST_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Run the container" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --name acquisitions-jsm \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 3000:3000 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e DATABASE_URL=your_neon_database_url \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e JWT_SECRET=your_jwt_secret \\" >> $GITHUB_STEP_SUMMARY
+          echo "  $FIRST_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Compose" >> $GITHUB_STEP_SUMMARY
+          echo "You can also use the production Docker Compose file:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Update the image tag in docker-compose.prod.yml" >> $GITHUB_STEP_SUMMARY
+          echo "# Then run:" >> $GITHUB_STEP_SUMMARY
+          echo "docker-compose -f docker-compose.prod.yml up -d" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Image Labels" >> $GITHUB_STEP_SUMMARY
+          echo "The image includes the following metadata:" >> $GITHUB_STEP_SUMMARY
+          echo "- Build timestamp" >> $GITHUB_STEP_SUMMARY
+          echo "- Git commit SHA" >> $GITHUB_STEP_SUMMARY
+          echo "- Source repository URL" >> $GITHUB_STEP_SUMMARY
+          echo "- License information" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create deployment issue
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tags = `${{ steps.meta.outputs.tags }}`.split('\n').filter(tag => tag.trim());
+            const latestTag = tags[0];
+            const prodTag = tags.find(tag => tag.includes('prod-')) || latestTag;
+            
+            const issueTitle = `🚀 New Docker Image Ready for Deployment - ${prodTag.split('/').pop()}`;
+            const issueBody = `
+            ## New Docker Image Available
+            
+            A new Docker image has been built and pushed to Docker Hub.
+            
+            ### Image Details
+            - **Repository**: \`${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}\`
+            - **Tags**: 
+            ${tags.map(tag => `  - \`${tag}\``).join('\n')}
+            - **Commit**: ${{ github.sha }}
+            - **Build Date**: ${new Date().toISOString()}
+            
+            ### Deployment Commands
+            
+            #### Pull and Run
+            \`\`\`bash
+            docker pull ${prodTag}
+            docker run -d \\
+              --name acquisitions-jsm \\
+              -p 3000:3000 \\
+              -e DATABASE_URL=\$DATABASE_URL \\
+              -e JWT_SECRET=\$JWT_SECRET \\
+              ${prodTag}
+            \`\`\`
+            
+            #### Using Docker Compose
+            \`\`\`bash
+            # Update docker-compose.prod.yml with the new image tag
+            sed -i 's|image:.*|image: ${prodTag}|' docker-compose.prod.yml
+            docker-compose -f docker-compose.prod.yml up -d
+            \`\`\`
+            
+            ### Verification
+            After deployment, verify the service is running:
+            - Health check: \`curl http://your-domain/health\`
+            - API status: \`curl http://your-domain/api\`
+            
+            ---
+            
+            **Auto-generated by GitHub Actions**
+            `;
+            
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['deployment', 'docker', 'production']
+            });
+            
+            console.log(`Created deployment issue: ${issue.html_url}`);
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Docker build and push failed!"
+          echo "::error::Please check the build logs and fix any issues."
+          echo "::error::Common issues:"
+          echo "::error::- Docker Hub credentials not set correctly"
+          echo "::error::- Dockerfile syntax errors"
+          echo "::error::- Network connectivity issues"
+          echo "::error::- Insufficient permissions"

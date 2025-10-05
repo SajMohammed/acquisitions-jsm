@@ -1,0 +1,215 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    env:
+      NODE_ENV: test
+      NODE_OPTIONS: --experimental-vm-modules
+      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/acquisitions_test
+      JWT_SECRET: test_jwt_secret_for_ci_testing_only
+      LOG_LEVEL: error
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: acquisitions_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U test_user; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Run database migrations
+        run: npm run db:migrate
+        continue-on-error: false
+
+      - name: Run tests
+        id: tests
+        run: |
+          echo "Running tests..."
+          npm test 2>&1 | tee test-output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          echo "test_exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          
+          # Check if coverage data exists
+          if [ -d "coverage" ]; then
+            echo "coverage_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "coverage_available=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Parse test results for summary
+          if grep -q "tests passed" test-output.txt; then
+            PASSED_TESTS=$(grep -o "[0-9]\+ tests passed" test-output.txt | grep -o "[0-9]\+" | head -1)
+            echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+          fi
+          
+          if grep -q "failed" test-output.txt; then
+            FAILED_TESTS=$(grep -o "[0-9]\+ failed" test-output.txt | grep -o "[0-9]\+" | head -1)
+            echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          fi
+          
+          exit $TEST_EXIT_CODE
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        if: always() && steps.tests.outputs.coverage_available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Create annotations for test failures
+        if: steps.tests.outputs.test_exit_code != '0'
+        run: |
+          echo "::error title=Test Failures::Some tests failed. Check the test output for details."
+          if [ -f test-output.txt ]; then
+            echo "::group::Test Output"
+            cat test-output.txt
+            echo "::endgroup::"
+            
+            # Create annotations for individual test failures
+            if grep -q "✖" test-output.txt; then
+              echo "::error title=Failed Tests::The following tests failed:"
+              grep "✖" test-output.txt | while read -r line; do
+                echo "::error::$line"
+              done
+            fi
+          fi
+
+      - name: Add PR comment for test failures
+        if: steps.tests.outputs.test_exit_code != '0' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🚨 Test Failures\n\n';
+            comment += 'Some tests are failing in this PR. Please review and fix the failing tests.\n\n';
+            
+            try {
+              const testOutput = fs.readFileSync('test-output.txt', 'utf8');
+              const lines = testOutput.split('\n');
+              const failedTests = lines.filter(line => line.includes('✖') || line.includes('failed'));
+              
+              if (failedTests.length > 0) {
+                comment += '### Failed Tests:\n';
+                comment += '```\n';
+                failedTests.forEach(test => {
+                  comment += test + '\n';
+                });
+                comment += '```\n\n';
+              }
+            } catch (error) {
+              console.log('Could not read test output file:', error.message);
+            }
+            
+            comment += '### How to fix:\n';
+            comment += '1. Run tests locally: `npm test`\n';
+            comment += '2. Fix the failing tests\n';
+            comment += '3. Commit and push your changes\n\n';
+            comment += 'For more detailed output, check the "Tests" job in the Actions tab.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Generate step summary
+        if: always()
+        run: |
+          echo "# Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.tests.outputs.test_exit_code }}" = "0" ]; then
+            echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.tests.outputs.passed_tests }}" ]; then
+              echo "- **Passed**: ${{ steps.tests.outputs.passed_tests }} tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ **Tests failed**" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.tests.outputs.passed_tests }}" ]; then
+              echo "- **Passed**: ${{ steps.tests.outputs.passed_tests }} tests" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ steps.tests.outputs.failed_tests }}" ]; then
+              echo "- **Failed**: ${{ steps.tests.outputs.failed_tests }} tests" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.tests.outputs.coverage_available }}" = "true" ]; then
+            echo "📊 **Coverage reports** are available in the artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📊 **Coverage reports** not generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js**: 20.x" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: PostgreSQL 16" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Environment**: \`${{ env.NODE_ENV }}\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Commands" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Run all tests" >> $GITHUB_STEP_SUMMARY
+          echo "npm test" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Run tests in watch mode" >> $GITHUB_STEP_SUMMARY
+          echo "npm run test:watch" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow if tests failed
+        if: steps.tests.outputs.test_exit_code != '0'
+        run: |
+          echo "::error::Tests failed. Please fix the failing tests and try again."
+          exit 1
