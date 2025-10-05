@@ -24,17 +24,20 @@ A Node.js/Express application for acquisitions management, powered by Neon Datab
 ### Local Development (Without Docker)
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 2. **Set up environment variables:**
+
    ```bash
    cp .env.production.example .env
    # Edit .env with your Neon database URL
    ```
 
 3. **Run database migrations:**
+
    ```bash
    npm run db:migrate
    ```
@@ -51,6 +54,7 @@ The server will start at `http://localhost:3000`
 For a complete Docker-based development environment with **Neon Local** proxy:
 
 1. **Configure Neon credentials:**
+
    ```bash
    # Create .env file
    cat > .env << EOF
@@ -60,6 +64,7 @@ For a complete Docker-based development environment with **Neon Local** proxy:
    ```
 
 2. **Start development environment:**
+
    ```bash
    docker-compose -f docker-compose.dev.yml up --build
    ```
@@ -102,11 +107,11 @@ This project includes a complete CI/CD pipeline with GitHub Actions:
 
 ### Workflows
 
-| Workflow | Triggers | Purpose |
-|----------|----------|----------|
-| **Lint and Format** | Push/PR to `main`/`staging` | Code quality checks with auto-fix suggestions |
-| **Tests** | Push/PR to `main`/`staging` | Run tests with coverage and database integration |
-| **Docker Build** | Push to `main` | Build and publish Docker images |
+| Workflow            | Triggers                    | Purpose                                          |
+| ------------------- | --------------------------- | ------------------------------------------------ |
+| **Lint and Format** | Push/PR to `main`/`staging` | Code quality checks with auto-fix suggestions    |
+| **Tests**           | Push/PR to `main`/`staging` | Run tests with coverage and database integration |
+| **Docker Build**    | Push to `main`              | Build and publish Docker images                  |
 
 📋 **CI/CD Documentation**: See [CI-CD.md](./CI-CD.md) for complete pipeline documentation.
 
@@ -124,18 +129,18 @@ This project includes a complete CI/CD pipeline with GitHub Actions:
 
 ## Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm test` | Run tests with coverage |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint issues automatically |
-| `npm run format` | Format code with Prettier |
-| `npm run format:check` | Check code formatting |
-| `npm run db:generate` | Generate database migrations |
-| `npm run db:migrate` | Apply database migrations |
-| `npm run db:studio` | Open Drizzle Studio |
+| Command                | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `npm run dev`          | Start development server with hot reload |
+| `npm test`             | Run tests with coverage                  |
+| `npm run test:watch`   | Run tests in watch mode                  |
+| `npm run lint`         | Run ESLint                               |
+| `npm run lint:fix`     | Fix ESLint issues automatically          |
+| `npm run format`       | Format code with Prettier                |
+| `npm run format:check` | Check code formatting                    |
+| `npm run db:generate`  | Generate database migrations             |
+| `npm run db:migrate`   | Apply database migrations                |
+| `npm run db:studio`    | Open Drizzle Studio                      |
 
 ## Project Structure
 
@@ -185,18 +190,18 @@ acquisitions-jsm/
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `development` or `production` |
-| `PORT` | Server port | `3000` |
+| Variable       | Description                     | Example                                  |
+| -------------- | ------------------------------- | ---------------------------------------- |
+| `NODE_ENV`     | Environment mode                | `development` or `production`            |
+| `PORT`         | Server port                     | `3000`                                   |
 | `DATABASE_URL` | Neon database connection string | `postgresql://user:pass@...neon.tech/db` |
-| `JWT_SECRET` | JWT signing secret | Generated with `openssl rand -base64 32` |
+| `JWT_SECRET`   | JWT signing secret              | Generated with `openssl rand -base64 32` |
 
 ### Optional Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LOG_LEVEL` | Logging verbosity | `info` |
+| Variable    | Description       | Default |
+| ----------- | ----------------- | ------- |
+| `LOG_LEVEL` | Logging verbosity | `info`  |
 
 See `.env.production.example` for a complete list.
 
@@ -282,11 +287,13 @@ The development server (`npm run dev`) uses Node.js `--watch` flag for automatic
 ### Using Docker
 
 1. **Build production image:**
+
    ```bash
    docker build -t acquisitions-jsm:latest .
    ```
 
 2. **Configure production environment:**
+
    ```bash
    cp .env.production.example .env.production
    # Edit .env.production with your production values
@@ -302,6 +309,7 @@ The development server (`npm run dev`) uses Node.js `--watch` flag for automatic
 The CI/CD pipeline automatically builds and pushes Docker images to Docker Hub when code is pushed to the `main` branch.
 
 **Image Tags:**
+
 - `latest` - Latest stable version
 - `prod-YYYYMMDD-HHmmss` - Production timestamp tags
 - `main-<sha>-YYYYMMDD-HHmmss` - Commit-specific tags

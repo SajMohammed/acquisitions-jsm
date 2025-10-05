@@ -9,14 +9,14 @@ describe('App Health Tests', () => {
 
   before(async () => {
     server = http.createServer(app);
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
       server.listen(port, resolve);
     });
   });
 
   after(async () => {
     if (server) {
-      await new Promise((resolve) => {
+      await new Promise(resolve => {
         server.close(resolve);
       });
     }
@@ -24,9 +24,9 @@ describe('App Health Tests', () => {
 
   it('should respond to health check', async () => {
     const response = await makeRequest('/health');
-    
+
     assert.strictEqual(response.statusCode, 200);
-    
+
     const data = JSON.parse(response.data);
     assert.strictEqual(data.status, 'OK');
     assert(data.timestamp);
@@ -35,16 +35,16 @@ describe('App Health Tests', () => {
 
   it('should respond to root endpoint', async () => {
     const response = await makeRequest('/');
-    
+
     assert.strictEqual(response.statusCode, 200);
     assert.strictEqual(response.data, 'Hello from acquisitions api');
   });
 
   it('should respond to API endpoint', async () => {
     const response = await makeRequest('/api');
-    
+
     assert.strictEqual(response.statusCode, 200);
-    
+
     const data = JSON.parse(response.data);
     assert.strictEqual(data.message, 'Aquisitions API is running!');
   });
@@ -63,13 +63,13 @@ function makeRequest(path) {
       },
     };
 
-    const req = http.request(options, (res) => {
+    const req = http.request(options, res => {
       let data = '';
-      
-      res.on('data', (chunk) => {
+
+      res.on('data', chunk => {
         data += chunk;
       });
-      
+
       res.on('end', () => {
         resolve({
           statusCode: res.statusCode,
@@ -79,7 +79,7 @@ function makeRequest(path) {
       });
     });
 
-    req.on('error', (error) => {
+    req.on('error', error => {
       reject(error);
     });
 

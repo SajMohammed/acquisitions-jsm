@@ -10,14 +10,14 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     env:
       NODE_ENV: test
       NODE_OPTIONS: --experimental-vm-modules
       DATABASE_URL: postgresql://test_user:test_password@localhost:5432/acquisitions_test
       JWT_SECRET: test_jwt_secret_for_ci_testing_only
       LOG_LEVEL: error
-    
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -65,25 +65,25 @@ jobs:
           npm test 2>&1 | tee test-output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           echo "test_exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
-          
+
           # Check if coverage data exists
           if [ -d "coverage" ]; then
             echo "coverage_available=true" >> $GITHUB_OUTPUT
           else
             echo "coverage_available=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Parse test results for summary
           if grep -q "tests passed" test-output.txt; then
             PASSED_TESTS=$(grep -o "[0-9]\+ tests passed" test-output.txt | grep -o "[0-9]\+" | head -1)
             echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
           fi
-          
+
           if grep -q "failed" test-output.txt; then
             FAILED_TESTS=$(grep -o "[0-9]\+ failed" test-output.txt | grep -o "[0-9]\+" | head -1)
             echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
           fi
-          
+
           exit $TEST_EXIT_CODE
         continue-on-error: true
 
@@ -129,10 +129,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            
+
             let comment = '## 🚨 Test Failures\n\n';
             comment += 'Some tests are failing in this PR. Please review and fix the failing tests.\n\n';
-            
+
             try {
               const testOutput = fs.readFileSync('test-output.txt', 'utf8');
               const lines = testOutput.split('\n');
@@ -149,13 +149,13 @@ jobs:
             } catch (error) {
               console.log('Could not read test output file:', error.message);
             }
-            
+
             comment += '### How to fix:\n';
             comment += '1. Run tests locally: `npm test`\n';
             comment += '2. Fix the failing tests\n';
             comment += '3. Commit and push your changes\n\n';
             comment += 'For more detailed output, check the "Tests" job in the Actions tab.';
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -168,7 +168,7 @@ jobs:
         run: |
           echo "# Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.tests.outputs.test_exit_code }}" = "0" ]; then
             echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
             if [ -n "${{ steps.tests.outputs.passed_tests }}" ]; then
@@ -183,21 +183,21 @@ jobs:
               echo "- **Failed**: ${{ steps.tests.outputs.failed_tests }} tests" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.tests.outputs.coverage_available }}" = "true" ]; then
             echo "📊 **Coverage reports** are available in the artifacts" >> $GITHUB_STEP_SUMMARY
           else
             echo "📊 **Coverage reports** not generated" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Environment" >> $GITHUB_STEP_SUMMARY
           echo "- **Node.js**: 20.x" >> $GITHUB_STEP_SUMMARY
           echo "- **Database**: PostgreSQL 16" >> $GITHUB_STEP_SUMMARY
           echo "- **Test Environment**: \`${{ env.NODE_ENV }}\`" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Commands" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY

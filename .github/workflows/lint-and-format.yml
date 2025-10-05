@@ -10,7 +10,7 @@ jobs:
   lint-and-format:
     name: Lint and Format Code
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,25 +73,25 @@ jobs:
           script: |
             const eslintFailed = '${{ steps.eslint.outputs.eslint_failed }}' === 'true';
             const prettierFailed = '${{ steps.prettier.outputs.prettier_failed }}' === 'true';
-            
+
             let comment = '## 🚨 Code Quality Issues Found\n\n';
-            
+
             if (eslintFailed) {
               comment += '### ESLint Issues\n';
               comment += 'ESLint found issues in your code. To fix them automatically, run:\n';
               comment += '```bash\nnpm run lint:fix\n```\n\n';
             }
-            
+
             if (prettierFailed) {
               comment += '### Prettier Issues\n';
               comment += 'Prettier found formatting issues. To fix them automatically, run:\n';
               comment += '```bash\nnpm run format\n```\n\n';
             }
-            
+
             comment += '### Quick Fix (Run both commands)\n';
             comment += '```bash\nnpm run lint:fix && npm run format\n```\n\n';
             comment += 'After running these commands, commit and push your changes to update this PR.';
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -104,23 +104,23 @@ jobs:
         run: |
           echo "# Lint and Format Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.eslint.outputs.eslint_failed }}" = "true" ]; then
             echo "❌ **ESLint**: Issues found" >> $GITHUB_STEP_SUMMARY
             echo "- Run \`npm run lint:fix\` to auto-fix issues" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **ESLint**: No issues found" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.prettier.outputs.prettier_failed }}" = "true" ]; then
             echo "❌ **Prettier**: Formatting issues found" >> $GITHUB_STEP_SUMMARY
             echo "- Run \`npm run format\` to auto-fix formatting" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **Prettier**: No formatting issues" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Quick Commands" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
